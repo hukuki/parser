@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.312.0",
+    "dotenv": "^16.0.3",
+    "mongoose": "^7.0.3"
+  },
+  "name": "parser",
+  "version": "1.0.0",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start" : "node index.js"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "description": ""
+}
