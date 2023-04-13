@@ -104,12 +104,8 @@ class MevzuatParser extends Parser {
                 Lines.push(line);
                 newLine = false;
             }
-            else if (line === '') {
-                newLine = true;
-            }
-            else {
-                Lines[Lines.length - 1] += " " + line;
-            }
+            else if (line === '') { newLine = true; }
+            else { Lines[Lines.length - 1] += " " + line; }
         }
 
         // Define regex patterns for headers, "madde" elements, and non-empty lines.
