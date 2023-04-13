@@ -1,9 +1,10 @@
 const fs = require('fs');
 
 class Parser {
-    constructor(source_folder, target_folder) {
+    constructor(source_folder, target_md_folder, target_json_folder) {
         this.source_folder = source_folder;
-        this.target_folder = target_folder;
+        this.target_md_folder = target_md_folder;
+        this.target_json_folder = target_json_folder;
         this.batchSize = 50;
     }
 
@@ -15,7 +16,7 @@ class Parser {
 
     parseToJson(mdFile) { return {} }
 
-    async uploadJson(json) { return Promise() }
+    async uploadJsonFile(file, jsonFile) { return Promise() }
 
     async parse() {
         const fileQuery = this.queryFiles();
@@ -25,11 +26,10 @@ class Parser {
             const mdFile = await this.transformFile(file);
             await this.uploadTransformedFile(file, mdFile);
             const json = this.parseToJson(mdFile);
-
             const jsonFile = JSON.stringify(json);
-            // save json file
-            fs.promises.writeFile('tmp/' + file.document._id + '.json', jsonFile);
-            // await this.uploadJson(json);
+            // fs.promises.writeFile('tmp/' + file.document._id + '.json', jsonFile);
+            
+            await this.uploadJsonFile(file, jsonFile);
         }, { parallel: 10 });  
     }
 

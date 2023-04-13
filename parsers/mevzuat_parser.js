@@ -7,8 +7,8 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
 class MevzuatParser extends Parser {
-    constructor(source_folder, target_folder) {
-        super(source_folder, target_folder);
+    constructor(source_folder, target_md_folder, target_json_folder) {
+        super(source_folder, target_md_folder, target_json_folder);
     }
 
     queryFiles() {
@@ -89,15 +89,15 @@ class MevzuatParser extends Parser {
     }
 
     async uploadTransformedFile(file, mdFile) {
-        await uploadFile(this.target_folder + '/' + file.document._id, mdFile);
+        await uploadFile(this.target_md_folder + '/' + file.document._id + '.md', mdFile);
     }
 
     parseToJson(mdFile) {
         const resultJson = []
         const rawLines = mdFile.split('\n');
 
+        // convert the paragraphs into one line
         const Lines = []
-
         let newLine = true
         for (const line of rawLines) {
             if (newLine) {
@@ -166,6 +166,10 @@ class MevzuatParser extends Parser {
         }
 
         return resultJson;
+    }
+
+    async uploadJsonFile(file, jsonFile) {
+        await uploadFile(this.target_json_folder + '/' + file.document._id + '.json', jsonFile);
     }
 
     async transformHtml(file, buffer) {

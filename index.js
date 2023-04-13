@@ -4,9 +4,10 @@ const { MevzuatParser } = require('./parsers/mevzuat_parser.js');
 const { uploadFile, getFile } = require('./s3/s3.js');
 
 const source_folder = 'mevzuat';
-const target_folder = 'mevzuat_md';
+const target_md_folder = 'mevzuat_md';
+const target_json_folder = 'mevzuat_json';
 
-const parser = new MevzuatParser(source_folder, target_folder);
+const parser = new MevzuatParser(source_folder, target_md_folder, target_json_folder);
 
 parser.parse();
 
