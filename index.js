@@ -1,6 +1,6 @@
 const dbConnection = require('./model/db.js');
 const File = require('./model/file.js');
-const { MevzuatParser } = require('./parsers/mevzuat_parser.js');
+const { MevzuatParser } = require('./parsers/mevzuatparser.js');
 const { uploadFile, getFile } = require('./s3/s3.js');
 
 const source_folder = 'mevzuat';

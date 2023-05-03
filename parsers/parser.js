@@ -1,36 +1,49 @@
 const fs = require('fs');
+const { IdentityTransformer } = require('./transformer');
+const bucket = require('../s3/s3');
 
+/*
+    * This is the base class for all parsers.
+    * It is responsible for:
+    * - Querying the database for files
+    * - Transforming the files to JSON tree using its transformer
+    * - Uploading the transformed files
+*/
 class Parser {
-    constructor(source_folder, target_md_folder, target_json_folder) {
-        this.source_folder = source_folder;
-        this.target_md_folder = target_md_folder;
-        this.target_json_folder = target_json_folder;
+    constructor(
+        sourceFolder,
+        targetMdFolder,
+        targetJsonFolder,
+        transformer = undefined
+        ) {
+        this.sourceFolder = sourceFolder;
+        this.targetMdFolder = targetMdFolder;
+        this.targetJsonFolder = targetJsonFolder;
         this.batchSize = 50;
+
+        this.transformer = transformer || new IdentityTransformer();
     }
 
-    queryFiles() { return Promise() }
-
-    async transformFile(file) { return Promise() }
-
-    async uploadTransformedFile(file, mdFile) { return Promise() }
-
-    parseToJson(mdFile) { return {} }
-
-    async uploadJsonFile(file, jsonFile) { return Promise() }
+    async queryFiles() { }
 
     async parse() {
-        const fileQuery = this.queryFiles();
-        console.log(fileQuery);
-        
-        await fileQuery.eachAsync(async (file) => {
-            const mdFile = await this.transformFile(file);
-            await this.uploadTransformedFile(file, mdFile);
-            const json = this.parseToJson(mdFile);
-            const jsonFile = JSON.stringify(json);
+        const files = await this.queryFiles();
+
+        const allJson = [];
+
+        for (let file of files) {
+            const fileData = await bucket.getFile(this.sourceFolder + '/' + file._id);
+            const json = await this.transformer.transform(file, fileData);
+
+            allJson.push(json);
+            //await bucket.uploadFile(file, mdFile);
+            //const json = this.parseToJson(mdFile);
+            //const jsonFile = JSON.stringify(json);
             // fs.promises.writeFile('tmp/' + file.document._id + '.json', jsonFile);
-            
-            await this.uploadJsonFile(file, jsonFile);
-        }, { parallel: 10 });  
+            //await bucket.uploadFile(file, jsonFile);
+        };
+        
+        console.log(JSON.stringify(allJson));
     }
 
 }

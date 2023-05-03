@@ -1,5 +1,5 @@
 require('./db.js');
-const { uploadFile, getFile } = require('./../s3/s3.js');
+const { uploadFile } = require('./../s3/s3.js');
 
 const mongoose = require("mongoose");
 const Document = require('./document.js');
