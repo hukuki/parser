@@ -25,25 +25,26 @@ class Parser {
     }
 
     async queryFiles() { }
+    parseToJSON(mdFile) { }
 
     async parse() {
-        const files = await this.queryFiles();
-
-        const allJson = [];
-
-        for (let file of files) {
-            const fileData = await bucket.getFile(this.sourceFolder + '/' + file._id);
-            const json = await this.transformer.transform(file, fileData);
-
-            allJson.push(json);
-            //await bucket.uploadFile(file, mdFile);
-            //const json = this.parseToJson(mdFile);
-            //const jsonFile = JSON.stringify(json);
-            // fs.promises.writeFile('tmp/' + file.document._id + '.json', jsonFile);
-            //await bucket.uploadFile(file, jsonFile);
-        };
+        const fileQuery = this.queryFiles();
         
-        console.log(JSON.stringify(allJson));
+        await fileQuery.eachAsync(async (file) => {
+            const fileData = await bucket.getFile(this.sourceFolder + '/' + file._id);
+            const mdFile = await this.transformer.transform(file, fileData);
+            
+            if (mdFile === null) {
+                console.log('File could not be transformed: ' + file._id + ' ' + file.contentType + ' ' + file.metadata.mevAdi);
+                return;
+            }
+            const json = this.parseToJSON(mdFile);
+            const jsonFile = JSON.stringify(json);
+            //console.log('Json', json)
+            fs.promises.writeFile('tmp/' + file.document._id + '.json', jsonFile);
+            
+            // await this.uploadJsonFile(file, jsonFile);
+        }, { parallel: 10 });  
     }
 
 }
