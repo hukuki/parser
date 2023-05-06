@@ -29,12 +29,20 @@ class Parser {
 
     async parse() {
         const fileQuery = this.queryFiles();
+        //const fileQuery = this.querySpecificFile('64486291e0b1ea631de96879');
         
         await fileQuery.eachAsync(async (file) => {
+            
+            // Skip if file is already parsed for debugging purposes
+            if(fs.existsSync('tmp/' + file.document._id + '.json')) {
+                console.log('File already exists: ' + file._id + ' ' + file.contentType + ' ' + file.metadata.mevAdi);
+                return;
+            }
+            
             const fileData = await bucket.getFile(this.sourceFolder + '/' + file._id);
             const mdFile = await this.transformer.transform(file, fileData);
             
-            if (mdFile === null) {
+            if (mdFile === null || mdFile === undefined) {
                 console.log('File could not be transformed: ' + file._id + ' ' + file.contentType + ' ' + file.metadata.mevAdi);
                 return;
             }
@@ -45,6 +53,8 @@ class Parser {
             
             // await this.uploadJsonFile(file, jsonFile);
         }, { parallel: 10 });  
+
+        console.log('Done');
     }
 
 }

@@ -17,8 +17,17 @@ class MevzuatParser extends Parser {
         return cursor  
     }
 
+    querySpecificFile(documentId) {
+        const cursor = File.aggregate(
+            [{'$match':{'document':documentId}}]
+        ).cursor({ batchSize: this.batchSize});
+        return cursor
+    }
+
     parseToJSON(mdFile) {
         this.result = []
+        this.levelStack = [];
+        this.currentParent = this.result;
         const rawlines = mdFile.split('\n');
 
         // convert the paragraphs into one line
@@ -34,7 +43,7 @@ class MevzuatParser extends Parser {
     }
 
     maddeParser(line){
-        const maddeRegex = /^\*\*.*madde\s*\d+.*\*\*/gi;
+        const maddeRegex = /^ *\*\*[^\*]*madde\s*\d+[^\*]*\*\*/gi; // /^\*\*.*madde\s*\d+.*\*\*/gi;
         
         if (line.match(maddeRegex)) {
             const maddeStr = line.match(maddeRegex)[0].replace(/\*\*/g, '').trim();
@@ -49,7 +58,8 @@ class MevzuatParser extends Parser {
                 this.result.push({type : "madde", maddeStr: maddeStr, number : maddeNumber, content : '', subsections : [altMadde]});
             }
             else {
-                this.result.push({type : "madde", maddeStr: maddeStr, number : maddeNumber, content : maddeContent, subsections : []}); 
+                this.result.push({type : "madde", maddeStr: maddeStr, number : maddeNumber, content : maddeContent, subsections : []});
+                this.levelStack = []; 
             }
             this.currentParent = this.result[this.result.length-1];
             return true     
@@ -59,7 +69,7 @@ class MevzuatParser extends Parser {
     }
 
     headerParser(line){
-        const headerRegex = /^\*\*(?=.*\w)[^\n]*\*\*$/i;
+        const headerRegex = /^ *\*\*(?=.*\w)[^\n]*\*\*$/i;
 
         if (line.match(headerRegex)) {
             const header = line.replace(/\*\*/g, '').trim();
@@ -76,10 +86,10 @@ class MevzuatParser extends Parser {
         const tableEndRegex = /<\/table>/gi;
         if (line.match(tableStartRegex) && line.match(tableEndRegex)) {
             if(this.currentParent.type === "madde" || this.currentParent.type === "text"){
-                this.currentParent.subsections.push({type : "table", content : line});
+                this.currentParent.subsections.push({type : "table", content : line, subsections : []});
             }
             else{
-                this.result.push({type : "table", content : line});
+                this.result.push({type : "table", content : line, subsections : []});
             }
             return true
         }
@@ -110,10 +120,12 @@ class MevzuatParser extends Parser {
             }
 
             if (altMaddeClass !== null && this.levelStack.includes(altMaddeClass)){
+                //console.log(this.currentParent)
                 while (this.levelStack[this.levelStack.length-1] !== altMaddeClass) {
                     this.levelStack.pop();
                     this.currentParent = this.getParent(this.result, this.getParent(this.result, this.currentParent));
                 }
+                //console.log(this.currentParent);
                 this.currentParent.subsections.push({type : "text", content : line, subsections : [], altMaddeClass, altMaddeTitle});
                 return true
             }
@@ -129,7 +141,9 @@ class MevzuatParser extends Parser {
             [/^[^\wığüşöç]*\(\d+\\*\)/], // (1), (2), (3) etc.
             [/^[^\wığüşöç(]*[a-zığüşöç]\\*\)/], // a), b\\), c) etc.
             [/^[^\wığüşöç(]*\d+\\*\)/], // 1), 2), 3) etc.
-            [/^[^\wığüşöç(]*[a-zığüşöç][a-zığüşöç]\\*\)/] // aa), bb), cc) etc.
+            [/^[^\wığüşöç(]*[a-zığüşöç][a-zığüşöç]\\*\)/], // aa), bb), cc) etc.
+            [/^[^\wığüşöç]*\([a-zığüşöç]\\*\)/], // (a), (b\\), (c) etc.
+            [/^[^\wığüşöç]*\([a-zığüşöç][a-zığüşöç]\\*\)/] // (aa), (bb), (cc) etc.
         ]
 
         for (const [index, regexClass] of altMaddeRegex.entries()) {
