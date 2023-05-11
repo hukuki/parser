@@ -31,7 +31,7 @@ class HTML2MDTransformer {
             await fs.rm('tmp/' + file.document._id + '.docx');
             
             const mdFile = await fs.readFile('tmp/' + file.document + '.md', { encoding : 'utf-8'});
-            //await fs.rm('tmp/' + file.document + '.md');
+            await fs.rm('tmp/' + file.document + '.md');
             
             return mdFile;
         } catch (err) {

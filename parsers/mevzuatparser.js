@@ -2,6 +2,7 @@ const { Parser } = require('./parser.js');
 const Document = require('../model/document.js');
 const File = require('../model/file.js');
 const bucket = require('../s3/s3.js');
+const connection = require('../model/db.js');
 const { MevzuatTransformer } = require('./transformer.js');
 
 class MevzuatParser extends Parser {
@@ -10,10 +11,11 @@ class MevzuatParser extends Parser {
         this.levelStack = [];
     }
 
-    queryFiles() {
+    queryFiles(skip=0, limit=1000) {
         const cursor = Document.aggregate(
-            [{'$lookup':{'from':'files','let':{'doc_id':'$_id','docLastUpdated':'$sourceLastUpdated'},'pipeline':[{'$match':{'$expr':{'$and':[{'$eq':['$document','$$doc_id']},{'$eq':['$sourceLastUpdated','$$docLastUpdated']}]}}},{'$addFields':{'priority':{'$switch':{'branches':[{'case':{'$eq':['$contentType','text/html; charset=utf-8']},'then':1},{'case':{'$eq':['$contentType','application/msword']},'then':2},{'case':{'$eq':['$contentType','application/pdf']},'then':3}],'default':4}}}},{'$sort':{'priority':1}}],'as':'files'}},{'$set':{'file':{'$first':'$files'}}},{'$replaceRoot':{'newRoot':'$file'}}]
-        ).cursor({ batchSize: this.batchSize});
+            [ { $skip: skip}, { $limit : limit }, { '$lookup': { 'from': 'files', 'let': { 'doc_id': '$_id', 'docLastUpdated': '$sourceLastUpdated' }, 'pipeline': [ { '$match': { '$expr': { '$and': [ { '$eq': [ '$document', '$$doc_id' ] }, { '$eq': [ '$sourceLastUpdated', '$$docLastUpdated' ] } ] } } }, { '$addFields': { 'priority': { '$switch': { 'branches': [ { 'case': { '$eq': [ '$contentType', 'text/html; charset=utf-8' ] }, 'then': 1 }, { 'case': { '$eq': [ '$contentType', 'application/msword' ] }, 'then': 2 }, { 'case': { '$eq': [ '$contentType', 'application/pdf' ] }, 'then': 3 } ], 'default': 4 } } } }, { '$sort': { 'priority': 1 } } ], 'as': 'files' } }, { '$set': { 'file': { '$first': '$files' } } }, { '$replaceRoot': { 'newRoot': { '$ifNull': [ '$file', { '_id': null } ] } } } ]
+            //[{'$lookup':{'from':'files','let':{'doc_id':'$_id','docLastUpdated':'$sourceLastUpdated'},'pipeline':[{'$match':{'$expr':{'$and':[{'$eq':['$document','$$doc_id']},{'$eq':['$sourceLastUpdated','$$docLastUpdated']}]}}},{'$addFields':{'priority':{'$switch':{'branches':[{'case':{'$eq':['$contentType','text/html; charset=utf-8']},'then':1},{'case':{'$eq':['$contentType','application/msword']},'then':2},{'case':{'$eq':['$contentType','application/pdf']},'then':3}],'default':4}}}},{'$sort':{'priority':1}}],'as':'files'}},{'$set':{'file':{'$first':'$files'}}},{'$replaceRoot':{'newRoot':'$file'}}]
+        ).option({maxTimeMS: 1000*60*60*3}).cursor({ batchSize: this.batchSize});
         return cursor  
     }
 
@@ -43,7 +45,7 @@ class MevzuatParser extends Parser {
     }
 
     maddeParser(line){
-        const maddeRegex = /^ *\*\*[^\*]*madde\s*\d+[^\*]*\*\*/gi; // /^\*\*.*madde\s*\d+.*\*\*/gi;
+        const maddeRegex = /^[  ]*\*\*[^\*]*madde\s*\d+[^\*]*\*\*/gi; // /^\*\*.*madde\s*\d+.*\*\*/gi;
         
         if (line.match(maddeRegex)) {
             const maddeStr = line.match(maddeRegex)[0].replace(/\*\*/g, '').trim();
@@ -69,7 +71,7 @@ class MevzuatParser extends Parser {
     }
 
     headerParser(line){
-        const headerRegex = /^ *\*\*(?=.*\w)[^\n]*\*\*$/i;
+        const headerRegex = /^[  ]*\*\*(?=.*\w)[^\n]*\*\*$/i;
 
         if (line.match(headerRegex)) {
             const header = line.replace(/\*\*/g, '').trim();
@@ -167,6 +169,11 @@ class MevzuatParser extends Parser {
             else if (line === '') { newLine = true; }
             else { lines[lines.length - 1] += " " + line; }
         }
+
+        //remove unbreakable spaces
+        for (const [index, line] of lines.entries()) {
+            lines[index] = line.replace(/ /g, ' ');
+        }
         return lines;
     }
 
@@ -182,13 +189,12 @@ class MevzuatParser extends Parser {
         return null;
     }
 
-    // This function is not necessary.
     async uploadTransformedFile(file, mdFile) {
         await bucket.uploadFile(this.targetMdFolder + '/' + file.document + '.md', mdFile);
     }
 
     async uploadJsonFile(file, jsonFile) {
-        await uploadFile(this.targetJsonFolder + '/' + file.document._id + '.json', jsonFile);
+        await bucket.uploadFile(this.targetJsonFolder + '/' + file.document._id + '.json', jsonFile);
     }
 }
 
